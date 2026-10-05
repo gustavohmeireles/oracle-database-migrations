@@ -7,16 +7,16 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [SECTION I: Environment Assessment & Destination Provisioning](#section-i-environment-assessment--destination-provisioning)
+- [SECTION I: Environment Assessment & Target Provisioning](#section-i-environment-assessment--target-provisioning)
   - [1. General Assessment of Hosts Involved in the Operation](#1-general-assessment-of-hosts-involved-in-the-operation)
     - [SOURCE Environment (ORIGEM)](#source-environment-origem)
-    - [DESTINATION Environment (DESTINO)](#destination-environment-destino)
-  - [2. Parametrization and Configuration of the PRODUCTION Environment on DESTINATION](#2-parametrization-and-configuration-of-the-production-environment-on-destination)
-  - [3. Creation of the STAGING Environment (HOMOLOGACAO) on DESTINATION](#3-creation-of-the-staging-environment-homologacao-on-destination)
+    - [TARGET Environment (DESTINO)](#target-environment-destino)
+  - [2. Parametrization and Configuration of the PRODUCTION Environment on TARGET](#2-parametrization-and-configuration-of-the-production-environment-on-target)
+  - [3. Creation of the STAGING Environment (HOMOLOGACAO) on TARGET](#3-creation-of-the-staging-environment-homologacao-on-target)
 - [SECTION II: Data Migration Execution & Validation](#section-ii-data-migration-execution--validation)
   - [1. Data Export from the SOURCE Environment](#1-data-export-from-the-source-environment)
-  - [2. Data Import and Validation in the Production Environment on DESTINATION](#2-data-import-and-validation-in-the-production-environment-on-destination)
-  - [3. Data Import and Validation in the STAGING Environment on DESTINATION](#3-data-import-and-validation-in-the-staging-environment-on-destination)
+  - [2. Data Import and Validation in the Production Environment on TARGET](#2-data-import-and-validation-in-the-production-environment-on-target)
+  - [3. Data Import and Validation in the STAGING Environment on TARGET](#3-data-import-and-validation-in-the-staging-environment-on-target)
 - [SECTION III: Conclusion and Recommendations](#section-iii-conclusion-and-recommendations)
   - [Conclusion](#conclusion)
   - [Recommendations](#recommendations)
@@ -25,10 +25,10 @@
 
 ## Introduction
 
-This technical documentation details the end-to-end migration process of a single-instance **Oracle Database 11g Release 11.2.0.4.0 On-Premise** environment (referred to throughout this document as **SOURCE** / *ORIGEM*) to an **Oracle Database 19c Standard Edition 2 Version 19.28.0.0.0 Multitenant (CDB/PDB)** environment deployed in a Private Cloud (referred to as **DESTINATION** / *DESTINO*).
+This technical documentation details the end-to-end migration process of a single-instance **Oracle Database 11g Release 11.2.0.4.0 On-Premise** environment (referred to throughout this document as **SOURCE** / *ORIGEM*) to an **Oracle Database 19c Standard Edition 2 Version 19.28.0.0.0 Multitenant (CDB/PDB)** environment deployed in a Private Cloud (referred to as **TARGET** / *DESTINO*).
 
 ### Key Technologies Employed
-- **OpenVPN**: Secure encrypted tunnel connectivity between SOURCE and DESTINATION hosts.
+- **OpenVPN**: Secure encrypted tunnel connectivity between SOURCE and TARGET hosts.
 - **Oracle Data Pump (`EXPDP` / `IMPDP`)**: Logical backup, export, and import of database objects and schemas.
 - **Oracle Cloud Infrastructure (OCI) Object Storage**: High-throughput file transfer medium for compressed migration dumps.
 - **Red Hat Ansible Automation Platform**: Infrastructure-as-Code (IaC) automation for target host provisioning, operating system dependencies, and Oracle 19c CDB/PDB software setup prior to data import.
@@ -36,7 +36,7 @@ This technical documentation details the end-to-end migration process of a singl
 ### Migration Strategy & Rationale
 The adoption of logical export and import via Data Pump (`expdp`/`impdp`) was selected over physical migration techniques (such as RMAN restore or transportable tablespaces) due to architectural shifts between the two environments:
 1. **Architectural Transition**: Moving from a traditional non-CDB single instance (11g) to a Multitenant Container Database architecture (19c CDB/PDB).
-2. **Selective Schema Deployment**: Data Pump allowed exporting multiple application schemas (`EMPRESA01`, `EMPRESA02`, `EMPRESA03`, `BI01`, `BI02`, `FV01`, `FV02`, `HOMOLOGACAO`) from SOURCE and selectively routing them into distinct target environments on DESTINATION without requiring a full database physical clone.
+2. **Selective Schema Deployment**: Data Pump allowed exporting multiple application schemas (`EMPRESA01`, `EMPRESA02`, `EMPRESA03`, `BI01`, `BI02`, `FV01`, `FV02`, `HOMOLOGACAO`) from SOURCE and selectively routing them into distinct target environments on TARGET without requiring a full database physical clone.
 3. **Segregation of Staging**: The staging/homologation schema (`HOMOLOGACAO`) was isolated into a dedicated Pluggable Database (`PDB TESTE`), while production schemas were loaded into the primary production PDB (`ORCL`).
 
 ### Benefits of Pluggable Database (PDB) Segregation
@@ -52,7 +52,7 @@ In accordance with legal mandates under the Brazilian General Data Protection La
 
 ---
 
-## SECTION I: Environment Assessment & Destination Provisioning
+## SECTION I: Environment Assessment & Target Provisioning
 
 ### 1. General Assessment of Hosts Involved in the Operation
 
@@ -93,7 +93,7 @@ Database parameters retrieved via `SELECT property_name, property_value FROM dat
 | `EXPORT_VIEWS_VERSION` | `8` |
 | `DICT.BASE` | `2` |
 
-#### DESTINATION Environment (DESTINO)
+#### TARGET Environment (DESTINO)
 
 ##### Host Hardware & Operating System
 - **Manufacturer / Product**: VMware, Inc. VMware7,1
@@ -134,7 +134,7 @@ Database parameters retrieved via `SELECT property_name, property_value FROM dat
 
 ---
 
-### 2. Parametrization and Configuration of the PRODUCTION Environment on DESTINATION
+### 2. Parametrization and Configuration of the PRODUCTION Environment on TARGET
 
 The target host provisioning, operating system software dependencies, and Oracle 19c database instance creation were automated using **Red Hat Ansible Automation Platform**.
 
@@ -142,7 +142,7 @@ The target host provisioning, operating system software dependencies, and Oracle
 2. **Ansible Playbook Execution**: The automation workflow executed the setup of Oracle Home, creation of the Container Database (`ORACDB`), configuration of Pluggable Database (`ORCL`), tablespace allocation, and initialization parameter configuration.
 
 #### Ansible Execution JSON Configuration Payload
-The following JSON payload was passed into the Ansible automation workflow with `limit` targeted strictly at the **DESTINATION** host:
+The following JSON payload was passed into the Ansible automation workflow with `limit` targeted strictly at the **TARGET** host:
 
 ```json
 {
@@ -211,7 +211,7 @@ The following JSON payload was passed into the Ansible automation workflow with 
 
 ---
 
-### 3. Creation of the STAGING Environment (HOMOLOGACAO) on DESTINATION
+### 3. Creation of the STAGING Environment (HOMOLOGACAO) on TARGET
 
 To ensure complete isolation between production and non-production workloads, a dedicated pluggable database named `TESTE` was provisioned from `PDB$SEED`.
 
@@ -274,10 +274,10 @@ $ rclone copy EXPDP_ORCL_FULL_07072026-22h.tar.gz ocistorage:xxxxxxxxxxxxxx \
 
 ---
 
-### 2. Data Import and Validation in the Production Environment on DESTINATION
+### 2. Data Import and Validation in the Production Environment on TARGET
 
 #### Step 1: Download Dump File from OCI Object Storage
-On the **DESTINATION** host, the file was fetched from OCI Object Storage:
+On the **TARGET** host, the file was fetched from OCI Object Storage:
 
 ```bash
 $ rclone copy ocistorage:xxxxxxxxxxxxxx/EXPDP_ORCL_FULL_07072026-22h.tar.gz ./ --progress
@@ -329,7 +329,7 @@ EXEC DBMS_STATS.GATHER_FIXED_OBJECTS_STATS;
 
 ---
 
-### 3. Data Import and Validation in the STAGING Environment on DESTINATION
+### 3. Data Import and Validation in the STAGING Environment on TARGET
 
 The staging schema (`HOMOLOGACAO`) was imported exclusively into the dedicated pluggable database `TESTE` (`@TESTE`).
 
@@ -383,5 +383,5 @@ To maintain optimal operational health, security, and performance on the new Ora
    - Implement fine-grained access control (FGAC), audit policies, and strict password management in compliance with LGPD requirements.
    - Periodically review database user privileges and grant assignments.
 5. **Resource & Capacity Monitoring**:
-   - Monitor storage growth, tablespace usage, and CPU/memory allocation on the destination host to ensure adequate headroom as transaction volumes scale.
+   - Monitor storage growth, tablespace usage, and CPU/memory allocation on the target host to ensure adequate headroom as transaction volumes scale.
    - Utilize automated monitoring tools for proactive alert management on database events.
